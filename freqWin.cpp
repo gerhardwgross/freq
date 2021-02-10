@@ -37,6 +37,7 @@
 
 //#include <exception>
 #include <windows.h>
+#include <minwinbase.h>
 #include <strsafe.h>
 #include "freqwin.h"
 #include "freq.h"
@@ -55,7 +56,7 @@ extern char g_dirsToOmit[MAX_DIRS_TO_OMIT][_MAX_PATH];
 extern long g_numFilePtrnsToOmit;
 extern char g_filePtrnsToOmit[MAX_FILE_PATTERNS_TO_OMIT][_MAX_PATH];
 
-void PrintLastError(LPTSTR lpszFunction);
+void PrintLastError(char* lpszFunction);
 
 char* strerror(int errNum)
 {  
@@ -70,7 +71,7 @@ bool ShouldIgnoreThisFile(WIN32_FIND_DATA ffd)
 {
     char lwrStr[_MAX_PATH];
 
-    CopyStringToLowerCaseRemoveAsterisk(ffd.cFileName, lwrStr);
+    CopyStringToLowerCaseRemoveAsterisk((const char*)ffd.cFileName, lwrStr);
     for (int i = 0; i < g_numFilePtrnsToOmit; ++i)
     {
         unsigned int tmp = ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
@@ -83,9 +84,13 @@ bool ShouldIgnoreThisFile(WIN32_FIND_DATA ffd)
 
 bool ShouldIgnoreThisDir(WIN32_FIND_DATA ffd)
 {
+    size_t charsConverted;
+    char fname[_MAX_PATH];
+
+    wcstombs_s(&charsConverted, fname, _MAX_PATH, ffd.cFileName, _MAX_PATH - 1);
     for (int i = 0; i < g_numDirsToOmit; ++i)
     {
-        if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && strcmp(g_dirsToOmit[i], ffd.cFileName) == 0)
+        if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && strcmp(g_dirsToOmit[i], fname) == 0)
             return true;
     }
 
@@ -96,11 +101,11 @@ bool ShouldIgnoreThisDir(WIN32_FIND_DATA ffd)
 A directory is passed in here
 ***************************************************************************/
 
-bool IsSensibleFileName(const char* dirName)
+bool IsSensibleFileName(const TCHAR* dirName)
 {
 	bool retVal = false;
 	int i;
-	int len = strlen(dirName);
+	size_t len = wcslen(dirName);
 
 	if (len > 0)
 	{
@@ -132,7 +137,7 @@ void SearchAllDirectories(const char *raw_in_file)
 {
     const int curPathSz = _MAX_PATH;
     char current_path[curPathSz];
-    char all_wildcard[] = "*";    // search through for all directories
+    TCHAR all_wildcard[] = L"*";    // search through for all directories
     long fl_cnt = 0;
     const int errStrSz = _MAX_PATH;
     char errStr[errStrSz];
@@ -162,7 +167,7 @@ void SearchAllDirectories(const char *raw_in_file)
                 errStr[0] = 0;
                 if (skipThisDir = ShouldIgnoreThisDir(ffd))
 					continue;
-				if(strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0 && strcmp(ffd.cFileName, "") != 0)
+				if(wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && wcscmp(ffd.cFileName, L"") != 0)
 				{
 					g_numFilesAndDirsChecked++;
 					if((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
@@ -171,7 +176,7 @@ void SearchAllDirectories(const char *raw_in_file)
 					{
 						if (IsSensibleFileName(ffd.cFileName))
 						{
-							if(_chdir(ffd.cFileName) != 0)
+							if(_wchdir(ffd.cFileName) != 0)
 							{
                                 if (Verbose == 1)
                                     sprintf_s(errStr, errStrSz, "  Attempting to _chdir to \"%s\\%s\", file attrib: %d, funcRecursionCnt: %d - ",
@@ -196,7 +201,7 @@ void SearchAllDirectories(const char *raw_in_file)
 							throw errStr;
 						}
 					}
-					catch (char * excp)
+					catch (char* excp)
 					{
 						PrintLastError(excp);
 						continue;
@@ -211,7 +216,7 @@ void SearchAllDirectories(const char *raw_in_file)
 	    if (!skipThisDir)
 		    SearchCurrentDirectory(raw_in_file, current_path);
     }
-    catch (char * excp)
+    catch (char* excp)
     {
         if (excp[0] != 0)
             PrintLastError(excp);
@@ -239,6 +244,9 @@ void SearchCurrentDirectory(
     char errStr[_MAX_PATH];
     WIN32_FIND_DATA ffd;
     HANDLE hFind = INVALID_HANDLE_VALUE;
+    TCHAR raw_in_fileW[_MAX_PATH];
+    size_t charsConverted;
+    char fname[_MAX_PATH];
 
     try
     {
@@ -250,9 +258,10 @@ void SearchCurrentDirectory(
             cur_path_tmp[1] = 0;
         }
 
+        mbstowcs_s(&charsConverted, raw_in_fileW, _MAX_PATH, raw_in_file, _MAX_PATH - 1);
         errStr[0] = 0;
         //if ((hFind = FindFirstFile(raw_in_file, &ffd)) == INVALID_HANDLE_VALUE)
-        if ((hFind = FindFirstFileEx(raw_in_file, FindExInfoStandard, &ffd, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH)) == INVALID_HANDLE_VALUE)
+        if ((hFind = FindFirstFileEx(raw_in_fileW, FindExInfoStandard, &ffd, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH)) == INVALID_HANDLE_VALUE)
         {
             if (Verbose == 1)
                 sprintf_s(errStr, _MAX_PATH, "  Error attempting to FindFirstFile in %s\\%s", current_path, raw_in_file);
@@ -261,7 +270,7 @@ void SearchCurrentDirectory(
 
         do
         {
-            if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0 && !(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            if (wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && !(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 if (File_Find)
                 {
@@ -273,8 +282,9 @@ void SearchCurrentDirectory(
                 }
                 else if (ShouldIgnoreThisFile(ffd))
 				    continue;
-					
-				freq_cntr = ProcessFile(ffd.cFileName);
+
+                wcstombs_s(&charsConverted, fname, _MAX_PATH, ffd.cFileName, _MAX_PATH - 1);
+                freq_cntr = ProcessFile(fname);
 
 				if ((freq_cntr > 0 || Verbose == 1) && (!Prnt_Min || Prnt_Some))
 				{
@@ -287,7 +297,7 @@ void SearchCurrentDirectory(
 						printf("\n  ---------------------------------------------------------------------------------");
                 }
             }
-			else if (File_Find && ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0)
+			else if (File_Find && ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0)
 			{
 				if (!ShouldIgnoreThisDir(ffd))
 				{
@@ -297,7 +307,7 @@ void SearchCurrentDirectory(
 			}
         } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFile(hFind, &ffd) != 0));
     }
-    catch (char * excp)
+    catch (char* excp)
     {
         if (excp[0] != 0)
             PrintLastError(excp);
@@ -307,13 +317,15 @@ void SearchCurrentDirectory(
         FindClose(hFind);
 }
 
-void PrintLastError(LPTSTR lpszFunction)
+void PrintLastError(char* msg)
 { 
     // Retrieve the system error message for the last-error code
 
     LPVOID lpMsgBuf;
     LPVOID lpDisplayBuf;
-    DWORD dw = GetLastError(); 
+    DWORD dw = GetLastError();
+    TCHAR msgW[_MAX_PATH];
+    size_t charsConverted;
 
     FormatMessage(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | 
@@ -326,13 +338,14 @@ void PrintLastError(LPTSTR lpszFunction)
         0, NULL );
 
     // Display the error message and exit the process
+    mbstowcs_s(&charsConverted, msgW, _MAX_PATH, msg, _MAX_PATH - 1);
 
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, 
-        (lstrlen((LPCTSTR)lpMsgBuf)+lstrlen((LPCTSTR)lpszFunction)+40)*sizeof(TCHAR)); 
+        (lstrlen((LPCTSTR)lpMsgBuf)+lstrlen(msgW)+40)*sizeof(TCHAR));
     StringCchPrintf((LPTSTR)lpDisplayBuf, 
         LocalSize(lpDisplayBuf) / sizeof(TCHAR),
         TEXT("%s failed with error %d: %s"), 
-        lpszFunction, dw, lpMsgBuf); 
+        msgW, dw, lpMsgBuf);
     //MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
 	fprintf(stderr, "\n  GetLastError: %s", (LPCTSTR)lpDisplayBuf);
 
