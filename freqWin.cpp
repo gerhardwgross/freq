@@ -39,6 +39,10 @@
 #include <windows.h>
 #include <minwinbase.h>
 #include <strsafe.h>
+#include <stdio.h>
+#include <wchar.h>
+#include <cstdio>
+#include <cwchar>
 #include "freqwin.h"
 #include "freq.h"
 
@@ -159,7 +163,7 @@ void SearchAllDirectories(const char *raw_in_file)
         }
 
         if ((hFind = FindFirstFile(all_wildcard, &ffd)) == INVALID_HANDLE_VALUE)
-            printf("\n  No \"%s\" files in %s", all_wildcard, current_path);
+            wprintf(L"\n  No \"%s\" files in %s", all_wildcard, current_path);
         else
         {
 		    do
@@ -270,6 +274,7 @@ void SearchCurrentDirectory(
 
         do
         {
+            wcstombs_s(&charsConverted, fname, _MAX_PATH, ffd.cFileName, _MAX_PATH - 1);
             if (wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && !(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 if (File_Find)
@@ -277,19 +282,18 @@ void SearchCurrentDirectory(
                     // No search string just print the files that match the file pattern
                     //sprintf_s(buff, _MAX_PATH, "%s\\%s\n", cur_path_tmp, ffd.cFileName);
                     //printf(buff);
-                    printf_s("\n%s\\%s", cur_path_tmp, ffd.cFileName);
+                    printf_s("\n%s\\%s", cur_path_tmp, fname);
                     g_numFilesMatchPattern++;
                 }
                 else if (ShouldIgnoreThisFile(ffd))
 				    continue;
 
-                wcstombs_s(&charsConverted, fname, _MAX_PATH, ffd.cFileName, _MAX_PATH - 1);
                 freq_cntr = ProcessFile(fname);
 
 				if ((freq_cntr > 0 || Verbose == 1) && (!Prnt_Min || Prnt_Some))
 				{
-					freq_cntr > 0 ? printf(" +") : printf("  ");
-					sprintf_s(buff, _MAX_PATH, "\n%d occurrence(s) in:  %s\\%s", freq_cntr, cur_path_tmp, ffd.cFileName);
+					//freq_cntr > 0 ? printf(" +") : printf("  ");
+                    sprintf_s(buff, _MAX_PATH, "\n%d occurrence(s) in:  %s\\%s", freq_cntr, cur_path_tmp, fname);
 					if (g_reverseSlashDir == 1)
 						ReverseSlashDirInString(buff);
 					printf(buff);
@@ -301,7 +305,7 @@ void SearchCurrentDirectory(
 			{
 				if (!ShouldIgnoreThisDir(ffd))
 				{
-					printf("\n%s\\%s", cur_path_tmp, ffd.cFileName);
+					printf("\n%s\\%s", cur_path_tmp, fname);
 					g_numDirsMatchPattern++;
 				}
 			}
@@ -347,7 +351,7 @@ void PrintLastError(char* msg)
         TEXT("%s failed with error %d: %s"), 
         msgW, dw, lpMsgBuf);
     //MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
-	fprintf(stderr, "\n  GetLastError: %s", (LPCTSTR)lpDisplayBuf);
+	fwprintf(stderr, L"\n  GetLastError: %s", (LPCTSTR)lpDisplayBuf);
 
     LocalFree(lpMsgBuf);
     LocalFree(lpDisplayBuf);

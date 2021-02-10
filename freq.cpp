@@ -1,7 +1,7 @@
 /* **************************************************************************
-// freq -- utility program written by Gerhard Gross (PSU '95 - '99)
+// freq -- utility program written by Gerhard Gross (PSU '96 - '99)
 //
-// Copyright (c) 1995+ Gerhard W. Gross.
+// Copyright (c) 1995 - 2006 Gerhard W. Gross.
 //
 // THIS SOFTWARE IS PROVIDED BY GERHARD W. GROSS ``AS IS'' AND ANY
 // EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -58,6 +58,9 @@
 //
 // *************************************************************************/
 
+
+#undef _MAX_PATH
+#define _MAX_PATH (260 * 2)
 #ifdef _WIN32
 #include "freqWin.h"
 #else
