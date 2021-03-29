@@ -298,7 +298,7 @@ void SearchCurrentDirectory(
 						ReverseSlashDirInString(buff);
 					printf(buff);
 					if (Prnt_Lines || Verbose)
-						printf("\n  ---------------------------------------------------------------------------------");
+						printf("\n  ---------------------------------------------------------------------------------\n");
                 }
             }
 			else if (File_Find && ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0)
