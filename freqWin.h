@@ -51,8 +51,8 @@
 ***************************************************************************/
 
 //char* strerror(int errNum);
-void SearchAllDirectories(const char *raw_in_file);
-void SearchCurrentDirectory(const char *raw_in_file, const char *current_path);
+void SearchAllDirectories(const TCHAR *raw_in_file);
+void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path);
 
 /***************************************************************************
      Functions Prototypes for Windows specific implementation

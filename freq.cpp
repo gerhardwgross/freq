@@ -84,10 +84,10 @@ Global variables and macros
 #define BYTES_DEF_NUM_XTRA_LNS      3
 #define BYTES_DEF_NUM_COLS          100
 
-char Raw_In_File[_MAX_PATH];
-char F_Arr[ARSZ_MAX];
-char F_Arr_Case[ARSZ_MAX];
-char Raw_Search_String[_MAX_PATH];
+TCHAR Raw_In_File[_MAX_PATH];
+TCHAR F_Arr[ARSZ_MAX];
+TCHAR F_Arr_Case[ARSZ_MAX];
+TCHAR Raw_Search_String[_MAX_PATH];
 long Num_Search_Chars               = 0;
 bool Integer                        = false;
 bool WildCard                       = false;
@@ -116,58 +116,59 @@ long g_numDeadSymLinks              = 0;
 
 long g_numDirsToOmit = 0;
 long g_numFilePtrnsToOmit = 0;
-char g_dirsToOmit[MAX_DIRS_TO_OMIT][_MAX_PATH];
-char g_filePtrnsToOmit[MAX_FILE_PATTERNS_TO_OMIT][_MAX_PATH];
-char g_cur_path[_MAX_PATH];
-char g_prev_path[_MAX_PATH];
-char g_errBuf[_MAX_PATH];
+TCHAR g_dirsToOmit[MAX_DIRS_TO_OMIT][_MAX_PATH];
+TCHAR g_filePtrnsToOmit[MAX_FILE_PATTERNS_TO_OMIT][_MAX_PATH];
+TCHAR g_cur_path[_MAX_PATH];
+TCHAR g_prev_path[_MAX_PATH];
+TCHAR g_errBuf[_MAX_PATH];
 
 /***************************************************************************
 Private function prototypes
 ***************************************************************************/
 
 int GetConsoleWidth();
-long Search_File(size_t szFile, char *fname);
-void deal_with_args(int argc, char *argv[], char *working_dir);
+long Search_File(size_t szFile, TCHAR *fname);
+void deal_with_args(int argc, TCHAR*argv[], TCHAR *working_dir);
 void seperate_filename_and_path(
-    const char *path_and_file_name,
-    char *working_dir,
-    char *raw_in_file);
-void fill_reverse_case_array(char *f_arr_case, char *f_arr);
-int deal_with_options(int arrgc, char *arrgv[]);
-size_t measure_file(char *fname);
-int read_file(char *s_buf, size_t sz, char *fname);
-void shift(char *str);
-int GetTypeOfFile(const char* src, long szFile);
-int count(char *str, char *arr);
+    const TCHAR *path_and_file_name,
+    TCHAR *working_dir,
+    TCHAR *raw_in_file);
+void fill_reverse_case_array(TCHAR *f_arr_case, TCHAR*f_arr);
+int deal_with_options(int arrgc, TCHAR*arrgv[]);
+size_t measure_file(TCHAR *fname);
+int read_file(TCHAR *s_buf, size_t sz, TCHAR *fname);
+void shift(TCHAR *str);
+int GetTypeOfFile(const TCHAR* src, long szFile);
+int count(TCHAR *str, TCHAR *arr);
 void print_usage();
 
 /***************************************************************************
 MAIN
 ***************************************************************************/
 
-int main(int argc, char* argv[])
+int wmain(int argc, TCHAR* argv[])
 {
-    char original_calling_dir[_MAX_PATH];
-    char working_dir[_MAX_PATH];
-    char Reset_Dir;
+    TCHAR original_calling_dir[_MAX_PATH];
+    TCHAR working_dir[_MAX_PATH];
+    TCHAR Reset_Dir;
 
     working_dir[0]  = 0;
     g_prev_path[0]  = 0;
     g_cur_path[0]   = 0;
     Reset_Dir       = 0;
 
+
     g_maxLineWidth = GetConsoleWidth();
 
     argc = deal_with_options(argc, argv);
     deal_with_args(argc, argv, working_dir);
 
-    if(_getcwd(original_calling_dir, _MAX_PATH) == NULL)
+    if(_wgetcwd(original_calling_dir, _MAX_PATH) == NULL)
         OnError(7, 1, __LINE__, NULL);
 
     if (working_dir[0] != 0)
     {
-        if(_chdir(working_dir) != 0)
+        if(_wchdir(working_dir) != 0)
             OnError(8, 2, __LINE__, working_dir, false);
         Reset_Dir = 1;
     }
@@ -192,11 +193,11 @@ int main(int argc, char* argv[])
 
     if (Reset_Dir == 1)
     {
-        if(_chdir(original_calling_dir) != 0)
+        if(_wchdir(original_calling_dir) != 0)
             OnError(8, 3, __LINE__, original_calling_dir, false);
     }
 
-	//_wsystem("pause");
+    //_wsystem(L"pause");
     return 0;
 }
 
@@ -228,7 +229,7 @@ The file access and size is checked before searching the file. If the
 file is busy (used by another process) it can't be opened.
 ***************************************************************************/
 
-long ProcessFile(char *fname)
+long ProcessFile(TCHAR *fname)
 {
     size_t szFile, freq_cntr;
 
@@ -237,7 +238,7 @@ long ProcessFile(char *fname)
     if(szFile == 0)
     {
         if (Verbose)
-            fprintf(stderr, "\n    0 bytes in file \"%s\"", fname);
+            fwprintf(stderr, L"\n    0 bytes in file \"%s\"", fname);
         freq_cntr = -1;
     }
     else if(szFile < 0)
@@ -253,21 +254,23 @@ long ProcessFile(char *fname)
     file are checked for occurences of the search string.
 ***************************************************************************/
 
-long Search_File(size_t szFile, char *fname)
+long Search_File(size_t szFile, TCHAR *fname)
 {
-    char *src_buf, lin_buf[MAX_LINE_SZ+1];
+    TCHAR *src_buf, lin_buf[MAX_LINE_SZ+1];
     long i = 0, k = 0, freq_cntr = 0, line_cntr = 1, col_num = 1,
         char_cntr;
     size_t lnsz;
     int fileType;
-    char endLineMrk[]   = {CR, NL, 0};
-    char newLineAsStr[] = {NL};
+    const TCHAR endLineMrk[]   = {CR, NL, 0};
+    const TCHAR newLineAsStr[2] = {NL, 0};
     const int errStrSz = _MAX_PATH;
-    char errStr[errStrSz];
+    TCHAR errStr[errStrSz];
 
-    if((src_buf = (char*)malloc(szFile + 1)) == (void*)NULL)
+    src_buf = new TCHAR[szFile + 1];
+    if (src_buf == nullptr)
+    //if((src_buf = (TCHAR*)malloc(szFile + 1)) == (void*)NULL)
     {
-        snprintf(errStr, errStrSz, "%s, size: %lu", fname, szFile + 1);
+        _snwprintf_s(errStr, errStrSz, L"%ls, size: %lu", fname, (int)(szFile + 1));
         OnError(4, 1, __LINE__, fname, false);
         return 0;
     }
@@ -279,8 +282,7 @@ long Search_File(size_t szFile, char *fname)
     fileType = GetTypeOfFile(src_buf, szFile);
 
     if (g_printFileType)
-        printf("\n   -- File type is %s (%s) --",
-            (fileType == FREQ_TEXT_FILE ? "text" : "binary"), fname);
+        wprintf(L"\n   -- File type is %ls (%ls) --", (fileType == FREQ_TEXT_FILE ? L"text" : L"binary"), fname);
 
     for(i = 0; i < szFile; i++, col_num++)
     {
@@ -294,7 +296,7 @@ long Search_File(size_t szFile, char *fname)
 
         if (g_noWrapNewLine)
         {
-            while ((long)(lnsz = strcspn(&src_buf[i], endLineMrk)) < Num_Search_Chars)
+            while ((long)(lnsz = wcscspn(&src_buf[i], endLineMrk)) < Num_Search_Chars)
             {
                 // Search string can not span over multiple lines.
                 // Jump char counter to char past the next end of line markers
@@ -327,8 +329,8 @@ long Search_File(size_t szFile, char *fname)
 
         if(k == Num_Search_Chars && WholeWord)
         {
-            if( ( (i != 0) && ( isalpha(src_buf[i-1]) || src_buf[i-1] == '_' )) ||
-                ( (i+k) < (szFile) && ( isalpha(src_buf[i+k]) || src_buf[i+k] == '_' ))
+            if( ( (i != 0) && ( isalpha(src_buf[i - 1]) || src_buf[i-1] == '_' )) ||
+                ( (i + k) < (szFile) && ( isalpha(src_buf[i + k]) || src_buf[i + k] == '_' ))
                 )
                 k = Num_Search_Chars + 2;
         }
@@ -350,10 +352,10 @@ long Search_File(size_t szFile, char *fname)
                     for (int n = 0; n <= g_numXtraLnsToPrnt && k < szFile; ++n)
                     {
                         char_cntr = 0;
-                        lnsz = strcspn(&src_buf[k], endLineMrk);
+                        lnsz = wcscspn(&src_buf[k], endLineMrk);
                         lnsz = lnsz > MAX_LINE_SZ ? MAX_LINE_SZ : lnsz;
 
-                        strncpy_s(lin_buf, MAX_LINE_SZ+1, &(src_buf[k]), lnsz);
+                        wcsncpy_s(lin_buf, MAX_LINE_SZ+1, &(src_buf[k]), lnsz);
                         lin_buf[lnsz] = 0;
                         if (!Prnt_Min && !Prnt_Some)
                             printf("   line %5ld: ", line_cntr + n);
@@ -373,7 +375,7 @@ long Search_File(size_t szFile, char *fname)
                         // In case more lines are to be printed after the line containing the
                         // search string, move just beyond the next line delimiter.
                         k += lnsz;
-                        k += strcspn(&src_buf[k], newLineAsStr) + 1;
+                        k += wcscspn(&src_buf[k], newLineAsStr) + 1;
 
                         // Get past end of line characters
                         if (src_buf[k] == NL || src_buf[k] == CR)
@@ -390,13 +392,13 @@ long Search_File(size_t szFile, char *fname)
                     // don't want to print non-printable chars.
                     printf("   byte %8ld: ", k + 1);
                     for (; k < szFile && char_cntr++ < g_maxLineWidth; k++)
-                        printf("%c", (src_buf[k] > -1 && isprint(src_buf[k])) ? src_buf[k] : 32);
+                        wprintf(L"%c", (src_buf[k] > -1 && isprint(src_buf[k])) ? src_buf[k] : 32);
 
                     // Draw second line
                     printf("\n                  ");
                     char_cntr = 0;
                     for (; k < szFile && char_cntr++ < g_maxLineWidth; k++)
-                        printf("%c", (src_buf[k] > -1 && isprint(src_buf[k])) ? src_buf[k] : 32);
+                        wprintf(L"%c", (src_buf[k] > -1 && isprint(src_buf[k])) ? src_buf[k] : 32);
                 }
                 printf("\n");
                 i += Num_Search_Chars;
@@ -412,7 +414,8 @@ long Search_File(size_t szFile, char *fname)
 
     CLEANUP_LABEL(Zero)
 
-        free(src_buf);
+    //free(src_buf);
+    delete[] src_buf;
     return freq_cntr;
 }
 
@@ -423,7 +426,7 @@ string (or integers if the '-i' option is used) is determined and
 returned.
 ***************************************************************************/
 
-void deal_with_args(int argc, char *argv[], char working_dir[])
+void deal_with_args(int argc, TCHAR *argv[], TCHAR working_dir[])
 {
     int i, j, len;
 
@@ -436,24 +439,24 @@ void deal_with_args(int argc, char *argv[], char working_dir[])
     else if(argc != 3 && !File_Find && !g_printFileType)
         OnError(3, 1, __LINE__, NULL);
 
-    strcpy_s(Raw_Search_String, _MAX_PATH, argv[1]);
+    wcscpy_s(Raw_Search_String, _MAX_PATH, argv[1]);
 
     if(Integer)
         Num_Search_Chars = count(argv[1], F_Arr);
     else if (g_textEncoding == FREQ_EIGHT_BIT_ASCII)
     {
         // Make sure string not too large
-        if (strlen(argv[1]) >= ARSZ_MAX)
+        if (wcslen(argv[1]) >= ARSZ_MAX)
             OnError(12, 1, __LINE__, NULL);
 
         // Fill find array and get number of chars
-        strcpy_s(F_Arr, ARSZ_MAX, argv[1]);
-        Num_Search_Chars = strlen(F_Arr);
+        wcscpy_s(F_Arr, ARSZ_MAX, argv[1]);
+        Num_Search_Chars = wcslen(F_Arr);
     }
     else if (g_textEncoding == FREQ_UNICODE)
     {
         // Make sure string not too large
-        if ( (len = strlen(argv[1])) >= ARSZ_MAX / 2)
+        if ( (len = wcslen(argv[1])) >= ARSZ_MAX / 2)
             OnError(12, 1, __LINE__, NULL);
 
         // Put a zero behind every character in search
@@ -481,7 +484,7 @@ fills a char array with the reverse case of any alphabetic characters
 that are in the search array (f_arr).
 ***************************************************************************/
 
-void fill_reverse_case_array(char *f_arr_case, char *f_arr)
+void fill_reverse_case_array(TCHAR *f_arr_case, TCHAR *f_arr)
 {
     long i;
     for(i = 0; i < Num_Search_Chars; i++)
@@ -503,10 +506,10 @@ supplied at the com line (i.e. all except the first argv[] ptr are
 bumped back in the array).
 ***************************************************************************/
 
-int deal_with_options(int arrgc, char *arrgv[])
+int deal_with_options(int arrgc, TCHAR *arrgv[])
 {
     long i, j, num_opts;
-    char lwrStr[_MAX_PATH];
+    TCHAR lwrStr[_MAX_PATH], *ptr;
     for(j = 1; j < arrgc; j++)
     {
         if(*arrgv[j] == '-')
@@ -515,7 +518,7 @@ int deal_with_options(int arrgc, char *arrgv[])
                 shift(arrgv[j]);
             else
             {
-                num_opts = strlen(arrgv[j]) - 1;
+                num_opts = wcslen(arrgv[j]) - 1;
                 for(i = 1; i <= num_opts; i++)
                 {
                     switch(*(arrgv[j] + i))
@@ -568,7 +571,7 @@ int deal_with_options(int arrgc, char *arrgv[])
                         // This option must be succeeded with an integer and
                         // then a space. Convert string integer to numeric value.
                         // Implies print lines.
-                        g_numXtraLnsToPrnt = strtol(arrgv[j] + i + 1, NULL, 0) - 1;
+                        g_numXtraLnsToPrnt = wcstol(arrgv[j] + i + 1, NULL, 0) - 1;
                         Prnt_Lines = true;
                         g_maxLineWidth = 100000;
 
@@ -582,22 +585,22 @@ int deal_with_options(int arrgc, char *arrgv[])
                     case 'o':
                         // This option must be succeeded with a space, then a string and then a space
                         if (g_numFilePtrnsToOmit + 1 >= MAX_FILE_PATTERNS_TO_OMIT)
-                            fprintf(stderr, "\nOmitting too many file patterns - max %d", MAX_FILE_PATTERNS_TO_OMIT);
+                            fwprintf(stderr, L"\nOmitting too many file patterns - max %d", MAX_FILE_PATTERNS_TO_OMIT);
                         CopyStringToLowerCaseRemoveAsterisk((arrgv[j] + i + 2), lwrStr);
-                        strcpy_s(g_filePtrnsToOmit[g_numFilePtrnsToOmit++], _MAX_PATH, lwrStr);
+                        wcscpy_s(g_filePtrnsToOmit[g_numFilePtrnsToOmit++], _MAX_PATH, lwrStr);
 
-						// Consume the directory name, decrement number of args, and move the loop counter
-						for(i = j + 1; i < arrgc - 1; i++)
-							arrgv[i] = arrgv[i + 1];
-						arrgc--;
+                        // Consume the directory name, decrement number of args, and move the loop counter
+                        for(i = j + 1; i < arrgc - 1; i++)
+                            arrgv[i] = arrgv[i + 1];
+                        arrgc--;
                         i = num_opts;
                         break;
                     case 'O':
                         // This option must be succeeded with a space, then a string and then a space
                         if (g_numDirsToOmit + 1 >= MAX_DIRS_TO_OMIT)
-                            fprintf(stderr, "\nOmitting too many directories - max %d", MAX_DIRS_TO_OMIT);
+                            fwprintf(stderr, L"\nOmitting too many directories - max %d", MAX_DIRS_TO_OMIT);
                         CopyStringToLowerCaseRemoveAsterisk((arrgv[j] + i + 2), lwrStr);
-                        strcpy_s(g_dirsToOmit[g_numDirsToOmit++], _MAX_PATH, lwrStr);
+                        wcscpy_s(g_dirsToOmit[g_numDirsToOmit++], _MAX_PATH, lwrStr);
 
                         // Consume the directory name, decrement number of args, and move the loop counter
                         for (i = j + 1; i < arrgc - 1; i++)
@@ -608,7 +611,7 @@ int deal_with_options(int arrgc, char *arrgv[])
                     case 'd':
                         // This option must be succeeded with an integer and
                         // then a space. Convert string integer to numeric value.
-                        g_maxLineWidth = atol(arrgv[j] + i + 1);
+                        g_maxLineWidth = wcstol(arrgv[j] + i + 1, &ptr, 10);
 
                         // Error check
                         if (g_maxLineWidth < 0)
@@ -638,23 +641,23 @@ file name.
 ***************************************************************************/
 
 void seperate_filename_and_path(
-    const char *path_and_file_name,
-    char *working_dir,
-    char *raw_in_file)
+    const TCHAR *path_and_file_name,
+    TCHAR *working_dir,
+    TCHAR *raw_in_file)
 {
-    const char *cPtr;
+    const TCHAR *cPtr;
 
-    cPtr = strrchr(path_and_file_name, DELIM);
+    cPtr = wcsrchr(path_and_file_name, DELIM);
 
     if (cPtr != NULL)
     {
-        strcpy_s(raw_in_file, _MAX_PATH, cPtr+1);
-        strncpy_s(working_dir, _MAX_PATH, path_and_file_name,
+        wcscpy_s(raw_in_file, _MAX_PATH, cPtr+1);
+        wcsncpy_s(working_dir, _MAX_PATH, path_and_file_name,
             cPtr - path_and_file_name);
         working_dir[cPtr - path_and_file_name] = 0;
     }
     else
-        strcpy_s(raw_in_file, _MAX_PATH, path_and_file_name);
+        wcscpy_s(raw_in_file, _MAX_PATH, path_and_file_name);
 }
 
 /***************************************************************************
@@ -662,7 +665,7 @@ This function measures and returns the number of bytes in the
 file whose name is currently stored in the global string 'fname'.
 ***************************************************************************/
 
-size_t measure_file(char *fname)
+size_t measure_file(TCHAR *fname)
 {
 /*
     long sze;
@@ -672,8 +675,8 @@ size_t measure_file(char *fname)
     inFile.open(fname, ios::in | ios::binary);
     if(errno != 0)
     {
-        fprintf(stderr, "Can't _sopen_s \"%s\".  File may be busy ", fname);
-        fprintf(stderr, "or have restricted access; errno = %d\n", errno);
+        fwprintf(stderr, "Can't _sopen_s \"%s\".  File may be busy ", fname);
+        fwprintf(stderr, "or have restricted access; errno = %d\n", errno);
         sze = -1;
     }
     else
@@ -688,7 +691,7 @@ size_t measure_file(char *fname)
     struct _stat64 statBuf;
     errno = 0;
 
-    if (_stat64(fname, &statBuf) != 0)
+    if (_wstat64(fname, &statBuf) != 0)
     {
         OnError(13, 0, __LINE__, fname, false);
         return -1;
@@ -702,10 +705,10 @@ This function opens the file whose name is stored in fname, reads 'sz'
 number of bytes from this file and stores this data in s_buf.
 ***************************************************************************/
 
-int read_file(char *s_buf, size_t sz, char *fname)
+int read_file(TCHAR *s_buf, size_t sz, TCHAR *fname)
 {
     int ret = UTIL_SUCCESS;
-    ifstream inFile;
+    wifstream inFile;
     errno = 0;
 
     inFile.open(fname, ios::in | ios::binary);
@@ -736,10 +739,10 @@ is called from deal_with_options() to remove the special purpose slash
 character.
 ***************************************************************************/
 
-void shift(char *str)
+void shift(TCHAR *str)
 {
     int i, len;
-    len = strlen(str);
+    len = wcslen(str);
     for(i = 1; i < len; i++)
         str[i] = str[i + 1];
 }
@@ -749,9 +752,7 @@ Determine if file is text or binary by looking through first block
 of chars for non-printing chars or not CR, NL, or NP.
 ***************************************************************************/
 
-int GetTypeOfFile(
-    const char* src,
-    long szFile)
+int GetTypeOfFile(const TCHAR* src, long szFile)
 {
     int i;
     const int charsCheck    = 1000;
@@ -786,9 +787,9 @@ consequently the number of bytes in the output string arr[]) is
 returned by the func.
 ***************************************************************************/
 
-int count(char *str, char *arr)
+int count(TCHAR *str, TCHAR *arr)
 {
-    char *ptrs[ARSZ_MAX];
+    TCHAR *ptrs[ARSZ_MAX];
     int i = 0, j = 0, num, cnt = 0;
 
     // Remove leading whitespace (and commas)
@@ -797,7 +798,7 @@ int count(char *str, char *arr)
         str[i] == COMMA_ASCII_INT  ) && str[i] != 0)
     { i++; }
     ptrs[j++] = &str[i];
-    if(strlen(ptrs[j-1]) > 0)
+    if(wcslen(ptrs[j-1]) > 0)
         cnt = 1;
     while(str[i] != 0)
     {
@@ -822,7 +823,7 @@ int count(char *str, char *arr)
     }
     for(i = 0; i < cnt; i++)
     {
-        num = strtol(ptrs[i], NULL, 0);
+        num = wcstol(ptrs[i], NULL, 0);
         if(num >= 0 && num < 256)
             arr[i] = (char)num;
         else
@@ -865,7 +866,7 @@ The direction of the separator slash in the passed in string is
 reversed. If a forward slash (/) is encounterd it is replaced with a
 backward slash (\) and vice versa.
 ***************************************************************************/
-void ReverseSlashDirInString(char* buff)
+void ReverseSlashDirInString(TCHAR* buff)
 {
     int i = 0;
 
@@ -879,7 +880,7 @@ void ReverseSlashDirInString(char* buff)
     }
 }
 
-void CopyStringToLowerCaseRemoveAsterisk(const char* origStr, char* lwrCaseStr)
+void CopyStringToLowerCaseRemoveAsterisk(const TCHAR* origStr, TCHAR* lwrCaseStr)
 {
     int i = 0, j = 0;
     while (origStr[i] != 0)
@@ -897,60 +898,60 @@ If the interger arg passed is 99, just print the usage message and
 no error.    exit() is called from here.
 ***************************************************************************/
 
-void OnError(int i, int x, int line, const char *str, bool exitApp)
+void OnError(int i, int x, int line, const TCHAR *str, bool exitApp)
 {
     fflush(stdout);
     if(i != 99)
-        fprintf(stderr, "\nError %d-%d, line:%d - ", i, x, line);
+        fwprintf(stderr, L"\nError %d-%d, line:%d - ", i, x, line);
     switch(i)
     {
     case 1:
-        fprintf(stderr, "The first two arguments must contain one or more integers ranging from 1 - 255");
-        fprintf(stderr, "\n  inclusive, separated by commas (no spaces)!");
-        fprintf(stderr, "\n  If an argument has two or more integers, the whole argument must be put between quotes.");
+        fwprintf(stderr, L"The first two arguments must contain one or more integers ranging from 1 - 255");
+        fwprintf(stderr, L"\n  inclusive, separated by commas (no spaces)!");
+        fwprintf(stderr, L"\n  If an argument has two or more integers, the whole argument must be put between quotes.");
         break;
     case 2:
-        fprintf(stderr, "Opening file \"%s/%s\", errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"Opening file \"%s/%s\", errno: %s", g_cur_path, str, ErrNoMsg());
         break;
     case 3:
-        fprintf(stderr, "Wrong number of arguments.");
+        fwprintf(stderr, L"Wrong number of arguments.");
         break;
     case 4:
-        fprintf(stderr, "There is not enough memory for files of this size - %s", str);
-        fprintf(stderr, "\n  Split the file into one or more separate files and try again on each file.\n");
+        fwprintf(stderr, L"There is not enough memory for files of this size - %s", str);
+        fwprintf(stderr, L"\n  Split the file into one or more separate files and try again on each file.\n");
         break;
     case 5:
-        fprintf(stderr, "Undefined option.");
+        fwprintf(stderr, L"Undefined option.");
         break;
     case 7:
-        fprintf(stderr, "System call getcwd(), errno: %s.", ErrNoMsg());
+        fwprintf(stderr, L"System call getcwd(), errno: %s.", ErrNoMsg());
         break;
     case 8:
-        fprintf(stderr, "System call chdir(%s/%s),  errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"System call chdir(%s/%s),  errno: %s", g_cur_path, str, ErrNoMsg());
         g_numFailedChdir++;
         break;
     case 9:
-        fprintf(stderr, "System call scandir(%s/%s), errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"System call scandir(%s/%s), errno: %s", g_cur_path, str, ErrNoMsg());
         break;
     case 10:
-        fprintf(stderr, "System call chmod(%s/%s), errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"System call chmod(%s/%s), errno: %s", g_cur_path, str, ErrNoMsg());
         break;
     case 11:
-        fprintf(stderr, "Error reading %s/%s, errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"Error reading %s/%s, errno: %s", g_cur_path, str, ErrNoMsg());
         break;
     case 12:
-        fprintf(stderr, "Search string too large.");
+        fwprintf(stderr, L"Search string too large.");
         break;
     case 13:
-        fprintf(stderr, "System call stat(%s/%s)  errno: %s", g_cur_path, str, ErrNoMsg());
+        fwprintf(stderr, L"System call stat(%s/%s)  errno: %s", g_cur_path, str, ErrNoMsg());
         g_numDeadSymLinks++;
         break;
     }
-    //fprintf(stderr, "\n");
+    //fwprintf(stderr, "\n");
 
     if (exitApp)
     {
-        fprintf(stderr, "\n");
+        fwprintf(stderr, L"\n");
         print_usage();
         exit(1);
     }
@@ -963,8 +964,8 @@ This function prints notes to screen.
 
 void print_usage()
 {
-    fprintf(stderr,
-        "\n\
+    fwprintf(stderr,
+        L"\n\
     Usage:  freq [-iplfvwcWPRUT] str filename\n\
     \n\
     Searches 'filename' for occurrences of 'str'.\n\
@@ -1001,9 +1002,9 @@ void print_usage()
     ****** Gerhard W. Gross ******\n\n");
 }
 
-char* ErrNoMsg()
+TCHAR* ErrNoMsg()
 {
-    strerror_s(g_errBuf, _MAX_PATH, errno);
+    _wcserror_s(g_errBuf, _MAX_PATH, errno);
     return g_errBuf;
 
 }

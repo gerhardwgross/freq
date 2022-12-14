@@ -42,10 +42,10 @@
 #include<stddef.h>
 #include<fcntl.h>
 
-#define TB                      9
-#define NL                      10
-#define CR                      13
-#define NP                      12
+const int TB = 9;
+const int NL = 10;
+const int CR = 13;
+const int NP = 12;
 #define ARSZ_MAX                32768
 #define WC1                     63   /* '?' - chosen as char wildcard. */
 #define MAX_LINE_SZ             4096
@@ -81,10 +81,10 @@ typedef char t_BOOL;
 /***************************************************************************
     Public Function Prototypes
 ***************************************************************************/
-long ProcessFile(char *fname);
-void ReverseSlashDirInString(char* buff);
-void CopyStringToLowerCaseRemoveAsterisk(const char* origStr, char* lwrCaseStr);
-void OnError(int i, int x, int line, const char *str, bool exitApp = true);
-char* ErrNoMsg();
+long ProcessFile(TCHAR *fname);
+void ReverseSlashDirInString(TCHAR* buff);
+void CopyStringToLowerCaseRemoveAsterisk(const TCHAR* origStr, TCHAR * lwrCaseStr);
+void OnError(int i, int x, int line, const TCHAR *str, bool exitApp = true);
+TCHAR* ErrNoMsg();
 
 #endif
