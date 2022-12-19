@@ -165,8 +165,8 @@ void SearchAllDirectories(const TCHAR *raw_in_file)
 		    do
 		    {
                 errStr[0] = 0;
-                if (skipThisDir = ShouldIgnoreThisDir(ffd))
-					continue;
+                if (ShouldIgnoreThisDir(ffd))
+                    continue;
 				if(wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && wcscmp(ffd.cFileName, L"") != 0)
 				{
 					g_numFilesAndDirsChecked++;
@@ -213,8 +213,7 @@ void SearchAllDirectories(const TCHAR *raw_in_file)
         if (hFind != INVALID_HANDLE_VALUE && hFind != 0)
             FindClose(hFind);
 
-	    if (!skipThisDir)
-		    SearchCurrentDirectory(raw_in_file, current_path);
+		SearchCurrentDirectory(raw_in_file, current_path);
     }
     catch (TCHAR* excp)
     {

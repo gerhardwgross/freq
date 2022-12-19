@@ -197,6 +197,7 @@ int wmain(int argc, TCHAR* argv[])
             OnError(8, 3, __LINE__, original_calling_dir, false);
     }
 
+    // Debugging line
     //_wsystem(L"pause");
     return 0;
 }
