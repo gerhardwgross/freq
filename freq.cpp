@@ -98,6 +98,7 @@ bool File_Find                      = false;
 bool Case_Insensitive               = false;
 bool Verbose                        = false;
 bool WholeWord                      = false;
+bool SuppressErrorsPrintout         = true;
 bool Search_Subdirectories          = false;
 int g_maxLineWidth                  = BYTES_DEF_NUM_COLS;   /* max chars to print per line */
 int g_textEncoding                  = FREQ_EIGHT_BIT_ASCII;
@@ -135,7 +136,7 @@ void seperate_filename_and_path(
     TCHAR *raw_in_file);
 void fill_reverse_case_array(TCHAR *f_arr_case, TCHAR*f_arr);
 int deal_with_options(int arrgc, TCHAR*arrgv[]);
-size_t measure_file(TCHAR *fname);
+int measure_file(TCHAR* fname, size_t& fileSize);
 int read_file(TCHAR *s_buf, size_t sz, TCHAR *fname);
 void shift(TCHAR *str);
 int GetTypeOfFile(const TCHAR* src, long szFile);
@@ -234,7 +235,7 @@ long ProcessFile(TCHAR *fname)
 {
     size_t szFile, freq_cntr;
 
-    szFile = measure_file(fname);
+    int retVal = measure_file(fname, szFile);
 
     if(szFile == 0)
     {
@@ -242,7 +243,7 @@ long ProcessFile(TCHAR *fname)
             fwprintf(stderr, L"\n    0 bytes in file \"%s\"", fname);
         freq_cntr = -1;
     }
-    else if(szFile < 0)
+    else if(retVal < 0)
         freq_cntr = -1;
     else
         freq_cntr = Search_File(szFile, fname);
@@ -553,6 +554,9 @@ int deal_with_options(int arrgc, TCHAR *arrgv[])
                     case 'W':
                         WholeWord = true;
                         break;
+                    case 'E':
+                        SuppressErrorsPrintout = false;
+                        break;
                     case 'R':
                         Search_Subdirectories = true;
                         break;
@@ -666,7 +670,7 @@ This function measures and returns the number of bytes in the
 file whose name is currently stored in the global string 'fname'.
 ***************************************************************************/
 
-size_t measure_file(TCHAR *fname)
+int measure_file(TCHAR *fname, size_t& fileSize)
 {
 /*
     long sze;
@@ -698,7 +702,8 @@ size_t measure_file(TCHAR *fname)
         return -1;
     }
 
-    return (size_t)statBuf.st_size;
+    fileSize = static_cast<size_t>(statBuf.st_size);
+    return 0;
 }
 
 /***************************************************************************
@@ -901,6 +906,9 @@ no error.    exit() is called from here.
 
 void OnError(int i, int x, int line, const TCHAR *str, bool exitApp)
 {
+    if (SuppressErrorsPrintout)
+        return;
+
     fflush(stdout);
     if(i != 99)
         fwprintf(stderr, L"\nError %d-%d, line:%d - ", i, x, line);
@@ -988,6 +996,7 @@ void print_usage()
     -O omit directory from being searched (-O DirName). Can supply this option multiple times.\n\
     -c case insensitive. Insensitive to case of search string.\n\
     -W whole word. Searches for whole word occurrences only.\n\
+    -E Print any error statements to console.\n\
     -R recursive. Recursively search files in all subdirectories.\n\
     -U Unicode. Converts the search string to Unicode before search.\n\
     -s slash. Prints file path using opposite direction of slash.\n\

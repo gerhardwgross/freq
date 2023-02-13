@@ -51,6 +51,7 @@ extern bool Prnt_Lines;
 extern bool Prnt_Min;
 extern bool File_Find;
 extern bool Prnt_Some;
+extern bool SuppressErrorsPrintout;
 extern bool g_reverseSlashDir;
 extern long g_numFilesMatchPattern;
 extern long g_numDirsMatchPattern;
@@ -311,9 +312,11 @@ void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path)
 }
 
 void PrintLastError(TCHAR* msg)
-{ 
-    // Retrieve the system error message for the last-error code
+{
+    if (SuppressErrorsPrintout)
+        return;
 
+    // Retrieve the system error message for the last-error code
     LPVOID lpMsgBuf;
     LPVOID lpDisplayBuf;
     DWORD dw = GetLastError();
