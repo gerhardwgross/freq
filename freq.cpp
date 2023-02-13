@@ -554,7 +554,7 @@ int deal_with_options(int arrgc, TCHAR *arrgv[])
                     case 'W':
                         WholeWord = true;
                         break;
-                    case 'E':
+                    case 'e':
                         SuppressErrorsPrintout = false;
                         break;
                     case 'R':
@@ -975,7 +975,7 @@ void print_usage()
 {
     fwprintf(stderr,
         L"\n\
-    Usage:  freq [-iplfvwcWPRUT] str filename\n\
+    Usage:  freq [-ipvPlnmdfwoOcWeRUsT] str filename\n\
     \n\
     Searches 'filename' for occurrences of 'str'.\n\
     \n\
@@ -996,7 +996,7 @@ void print_usage()
     -O omit directory from being searched (-O DirName). Can supply this option multiple times.\n\
     -c case insensitive. Insensitive to case of search string.\n\
     -W whole word. Searches for whole word occurrences only.\n\
-    -E Print any error statements to console.\n\
+    -e Print any error statements to console, suppress by default.\n\
     -R recursive. Recursively search files in all subdirectories.\n\
     -U Unicode. Converts the search string to Unicode before search.\n\
     -s slash. Prints file path using opposite direction of slash.\n\
