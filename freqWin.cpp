@@ -159,8 +159,11 @@ void SearchAllDirectories(const TCHAR *raw_in_file)
             throw errStr;
         }
 
-        if ((hFind = FindFirstFile(all_wildcard, &ffd)) == INVALID_HANDLE_VALUE)
-            wprintf(L"\n  No \"%s\" files in %s", all_wildcard, current_path);
+        if ((hFind = FindFirstFileEx(all_wildcard, FindExInfoBasic, &ffd, FindExSearchNameMatch, nullptr, 0)) == INVALID_HANDLE_VALUE)
+        {
+            if (!SuppressErrorsPrintout)
+                wprintf(L"\n  No \"%s\" files in %s", all_wildcard, current_path);
+        }
         else
         {
 		    do
@@ -208,7 +211,7 @@ void SearchAllDirectories(const TCHAR *raw_in_file)
 						continue;
 					}
 				}
-            } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFile(hFind, &ffd) != 0));
+            } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFileW(hFind, &ffd) != 0));
         }
 
         if (hFind != INVALID_HANDLE_VALUE && hFind != 0)
@@ -255,9 +258,9 @@ void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path)
         }
 
         errStr[0] = 0;
-        if ((hFind = FindFirstFileEx(raw_in_file, FindExInfoStandard, &ffd, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH)) == INVALID_HANDLE_VALUE)
+        if ((hFind = FindFirstFileEx(raw_in_file, FindExInfoBasic, &ffd, FindExSearchNameMatch, nullptr, 0)) == INVALID_HANDLE_VALUE)
         {
-            if (Verbose == 1)
+            if (!SuppressErrorsPrintout)
                 swprintf_s(errStr, _MAX_PATH, L"  Error attempting to FindFirstFile in %s\\%s", current_path, raw_in_file);
             throw errStr;
         }
@@ -299,7 +302,7 @@ void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path)
 					g_numDirsMatchPattern++;
 				}
 			}
-        } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFile(hFind, &ffd) != 0));
+        } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFileW(hFind, &ffd) != 0));
     }
     catch (TCHAR* excp)
     {
