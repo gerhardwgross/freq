@@ -81,6 +81,11 @@ Global variables and macros
 #define SPACE_ASCII_INT             32
 #define TAB_ASCII_INT               9
 #define COMMA_ASCII_INT             44
+#define ASTERISK_ASCII_INT          42
+#define QUESTION_MARK_ASCII_INT     63
+#define FORWARD_SLASH               47
+#define BACKWARD_SLASH              92
+
 #define BYTES_DEF_NUM_XTRA_LNS      3
 #define BYTES_DEF_NUM_COLS          100
 
@@ -100,6 +105,7 @@ bool Verbose                        = false;
 bool WholeWord                      = false;
 bool SuppressErrorsPrintout         = true;
 bool Search_Subdirectories          = false;
+bool Search_Single_File             = false;
 int g_maxLineWidth                  = BYTES_DEF_NUM_COLS;   /* max chars to print per line */
 int g_textEncoding                  = FREQ_EIGHT_BIT_ASCII;
 bool g_printFileType                = false;
@@ -127,11 +133,12 @@ TCHAR g_errBuf[_MAX_PATH];
 Private function prototypes
 ***************************************************************************/
 
+void SearchSingleFile(TCHAR* raw_in_file);
 int GetConsoleWidth();
 long Search_File(size_t szFile, TCHAR *fname);
 void deal_with_args(int argc, TCHAR*argv[], TCHAR *working_dir);
 void seperate_filename_and_path(
-    const TCHAR *path_and_file_name,
+    TCHAR *path_and_file_name,
     TCHAR *working_dir,
     TCHAR *raw_in_file);
 void fill_reverse_case_array(TCHAR *f_arr_case, TCHAR*f_arr);
@@ -174,7 +181,9 @@ int wmain(int argc, TCHAR* argv[])
         Reset_Dir = 1;
     }
 
-    if(Search_Subdirectories == 1)
+    if (Search_Single_File)
+        SearchSingleFile(Raw_In_File);
+    else if(Search_Subdirectories == 1)
         SearchAllDirectories(Raw_In_File);
     else
         SearchCurrentDirectory(Raw_In_File, working_dir);
@@ -224,6 +233,24 @@ int GetConsoleWidth()
 #ifndef _WIN32
     return BYTES_DEF_NUM_COLS;
 #endif
+}
+
+void SearchSingleFile(TCHAR* raw_in_file)
+{
+    TCHAR buff[_MAX_PATH];
+
+    long freq_cntr = ProcessFile(raw_in_file);
+
+    if ((freq_cntr > 0 || Verbose == 1) && (!Prnt_Min || Prnt_Some))
+    {
+        //freq_cntr > 0 ? printf(" +") : printf("  ");
+        swprintf_s(buff, _MAX_PATH, L"\n%d occurrence(s) in:  %s", freq_cntr, raw_in_file);
+        if (g_reverseSlashDir == 1)
+            ReverseSlashDirInString(buff);
+        wprintf(buff);
+        if (Prnt_Lines || Verbose)
+            printf("\n  ---------------------------------------------------------------------------------\n");
+    }
 }
 
 /***************************************************************************
@@ -336,7 +363,7 @@ long Search_File(size_t szFile, TCHAR *fname)
                 )
                 k = Num_Search_Chars + 2;
         }
-        if(k == Num_Search_Chars)
+        if(k == Num_Search_Chars)  // Found a match
         {
             freq_cntr++;
             g_freqCntTotal++;
@@ -348,8 +375,11 @@ long Search_File(size_t szFile, TCHAR *fname)
             {
                 if (fileType == FREQ_TEXT_FILE)
                 {
-                    while(k > 0 && src_buf[k-1] != NL)
-                    {k--;}
+                    if (src_buf[k] == NL || src_buf[k] == CR)
+                        ++k;
+                    else
+                        while(k > 0 && src_buf[k - 1] != NL)
+                            --k;
 
                     for (int n = 0; n <= g_numXtraLnsToPrnt && k < szFile; ++n)
                     {
@@ -640,26 +670,44 @@ int deal_with_options(int arrgc, TCHAR *arrgv[])
     return arrgc;
 }
 
-/***************************************************************************
-Seperate the file name to search through from any path given with the
-file name.
-***************************************************************************/
+/********************************************************************************
+Seperate the file name to search through from any path given with the file name.
+*********************************************************************************/
 
 void seperate_filename_and_path(
-    const TCHAR *path_and_file_name,
+    TCHAR *path_and_file_name,
     TCHAR *working_dir,
     TCHAR *raw_in_file)
 {
     const TCHAR *cPtr;
 
-    cPtr = wcsrchr(path_and_file_name, DELIM);
+    // Replace any backslash with forward slash to make dir and file name separation easier.
+    // Also find if there are any wildcard chars present (*, ?)
+    size_t sz = wcslen(path_and_file_name);
+    bool has_wildcard_char = false;
+    for (size_t i = 0; i < sz; ++i) {
+        if (path_and_file_name[i] == BACKWARD_SLASH)
+            path_and_file_name[i] = FORWARD_SLASH;
+        else if (path_and_file_name[i] == ASTERISK_ASCII_INT || path_and_file_name[i] == QUESTION_MARK_ASCII_INT)
+            has_wildcard_char = true;
+    }
 
-    if (cPtr != NULL)
+    // Find last path delimiter
+    cPtr = wcschr(path_and_file_name, FORWARD_SLASH);
+
+    if (cPtr != nullptr)
     {
-        wcscpy_s(raw_in_file, _MAX_PATH, cPtr+1);
-        wcsncpy_s(working_dir, _MAX_PATH, path_and_file_name,
-            cPtr - path_and_file_name);
-        working_dir[cPtr - path_and_file_name] = 0;
+        // If there is a dir and file name, with no wildcards, search just that file
+        if (!has_wildcard_char) {
+            Search_Single_File = true;
+            wcscpy_s(raw_in_file, _MAX_PATH, path_and_file_name);
+            working_dir[0] = 0;
+        }
+        else {
+            wcscpy_s(raw_in_file, _MAX_PATH, cPtr + 1);
+            wcsncpy_s(working_dir, _MAX_PATH, path_and_file_name, cPtr - path_and_file_name);
+            working_dir[cPtr - path_and_file_name] = 0;
+        }
     }
     else
         wcscpy_s(raw_in_file, _MAX_PATH, path_and_file_name);

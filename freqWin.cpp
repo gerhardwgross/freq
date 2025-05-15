@@ -169,47 +169,45 @@ void SearchAllDirectories(const TCHAR *raw_in_file)
 		    do
 		    {
                 errStr[0] = 0;
-                if (ShouldIgnoreThisDir(ffd))
+                if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0 || wcscmp(ffd.cFileName, L"") == 0 || ShouldIgnoreThisDir(ffd))
                     continue;
-				if(wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && wcscmp(ffd.cFileName, L"") != 0)
+
+				g_numFilesAndDirsChecked++;
+				if((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+					continue;
+				try
 				{
-					g_numFilesAndDirsChecked++;
-					if((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-						continue;
-					try
+					if (IsSensibleFileName(ffd.cFileName))
 					{
-						if (IsSensibleFileName(ffd.cFileName))
+						if(_wchdir(ffd.cFileName) != 0)
 						{
-							if(_wchdir(ffd.cFileName) != 0)
-							{
-                                if (Verbose == 1)
-                                    swprintf_s(errStr, errStrSz, L"  Attempting to _chdir to \"%s\\%s\", file attrib: %d, funcRecursionCnt: %d - ",
-									    current_path, ffd.cFileName, ffd.dwFileAttributes, funcRecursionCnt);
-								throw errStr;
-							}
-						}
-					}
-					catch (TCHAR * excp)
-					{
-						PrintLastError(excp);
-						continue;
-					}
-
-					SearchAllDirectories(raw_in_file);
-
-					try
-					{
-						if(_wchdir(current_path) != 0)
-						{
-							swprintf_s(errStr, errStrSz, L"  Attempting to _chdir back to \"%s\" - ", current_path);
+                            if (Verbose == 1)
+                                swprintf_s(errStr, errStrSz, L"  Attempting to _chdir to \"%s\\%s\", file attrib: %d, funcRecursionCnt: %d - ",
+									current_path, ffd.cFileName, ffd.dwFileAttributes, funcRecursionCnt);
 							throw errStr;
 						}
 					}
-					catch (TCHAR* excp)
+				}
+				catch (TCHAR * excp)
+				{
+					PrintLastError(excp);
+					continue;
+				}
+
+				SearchAllDirectories(raw_in_file);
+
+				try
+				{
+					if(_wchdir(current_path) != 0)
 					{
-						PrintLastError(excp);
-						continue;
+						swprintf_s(errStr, errStrSz, L"  Attempting to _chdir back to \"%s\" - ", current_path);
+						throw errStr;
 					}
+				}
+				catch (TCHAR* excp)
+				{
+					PrintLastError(excp);
+					continue;
 				}
             } while ((hFind != INVALID_HANDLE_VALUE) && (FindNextFileW(hFind, &ffd) != 0));
         }
@@ -267,8 +265,11 @@ void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path)
 
         do
         {
+            if (wcscmp(ffd.cFileName, L".") == 0 || wcscmp(ffd.cFileName, L"..") == 0)
+                continue;
+
             wcscpy_s(fname, _MAX_PATH, ffd.cFileName);
-            if (wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0 && !(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 if (File_Find)
                 {
@@ -294,7 +295,7 @@ void SearchCurrentDirectory(const TCHAR *raw_in_file, const TCHAR *current_path)
 						printf("\n  ---------------------------------------------------------------------------------\n");
                 }
             }
-			else if (File_Find && ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0)
+			else if (File_Find && ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
 				if (!ShouldIgnoreThisDir(ffd))
 				{

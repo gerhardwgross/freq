@@ -44,7 +44,6 @@
 // For raw (unbuffered) file I/O
 #define FREQ_BINARY     _O_BINARY
 #define FREQ_READ       _O_RDONLY
-#define DELIM    92    // dirname delimiter - backward slash character
 
 /***************************************************************************
     Public Function Prototypes
