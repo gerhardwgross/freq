@@ -172,7 +172,7 @@ int wmain(int argc, TCHAR* argv[])
     deal_with_args(argc, argv, working_dir);
 
     if(_wgetcwd(original_calling_dir, _MAX_PATH) == NULL)
-        OnError(7, 1, __LINE__, NULL);
+        OnError(7, 1, __LINE__, NULL, true);
 
     if (working_dir[0] != 0)
     {
@@ -465,11 +465,11 @@ void deal_with_args(int argc, TCHAR *argv[], TCHAR working_dir[])
     // If just listing the files that match the file pattern or computing the file type, can skip most of this stuff
 
     if(argc == 1)
-        OnError(99, 1, __LINE__, NULL);
+        OnError(99, 1, __LINE__, NULL, true);
     else if(argc != 2 && (File_Find || g_printFileType))
-        OnError(3, 1, __LINE__, NULL);
+        OnError(3, 1, __LINE__, NULL, true);
     else if(argc != 3 && !File_Find && !g_printFileType)
-        OnError(3, 1, __LINE__, NULL);
+        OnError(3, 1, __LINE__, NULL, true);
 
     wcscpy_s(Raw_Search_String, _MAX_PATH, argv[1]);
 
@@ -954,8 +954,14 @@ no error.    exit() is called from here.
 
 void OnError(int i, int x, int line, const TCHAR *str, bool exitApp)
 {
-    if (SuppressErrorsPrintout)
+    if (SuppressErrorsPrintout) {
+        if (exitApp) {
+            fwprintf(stderr, L"\n");
+            print_usage();
+            exit(1);
+        }
         return;
+    }
 
     fflush(stdout);
     if(i != 99)
